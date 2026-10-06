@@ -1,0 +1,13 @@
+{
+	"autodeskProduct": "Fusion360",
+	"type": "addin",
+	"id": "6d0c2a1e-5b7f-4c1e-9a43-2f6f0b9c8e11",
+	"author": "Aaron Penn",
+	"description": {
+		"": "Keep Fusion designs in a git repository: init, commit on save, pull, push, reimport."
+	},
+	"version": "0.1.0",
+	"runOnStartup": false,
+	"supportedOS": "windows|mac",
+	"editEnabled": true
+}
