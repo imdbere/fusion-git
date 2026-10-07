@@ -148,6 +148,11 @@ def on_saved(doc, own_save):
     return store.load_settings()["promptCommitOnSave"]
 
 
+def _failed_exports_note(formats):
+    return (f"The {', '.join(formats)} export failed, so the previous {'file was' if len(formats) == 1 else 'files were'} "
+            "kept. The design itself was committed. Check the timeline for features with warnings.")
+
+
 def _with_real_file(repo, path, then):
     """Run `then()` once `path` holds the real design: a clone made without Git LFS active
     contains small pointer files instead, which are downloaded first."""
@@ -241,7 +246,7 @@ def init(request):
     remotes = remote_urls(repo.root)
     key = fdesign.new_link_id()
     fdesign.set_metadata(design, path, remotes[0] if remotes else "", key)
-    files = fdesign.export_wrapper(design, occ, repo.abspath(path), config["exports"])
+    files, failed_exports = fdesign.export_wrapper(design, occ, repo.abspath(path), config["exports"])
     store.set_link(key, repoPath=repo.root, pathInRepo=path, dirty=False, lineage=lineage)
     fdesign.save(doc, "Connected to git")
     extra = [p for p in [".gitattributes", ".gitignore"] + ([store.REPO_CONFIG_NAME] if config_created else [])
@@ -251,6 +256,8 @@ def init(request):
 
     notify(f"Connected to git — committed {sha} in {os.path.basename(repo.root)}")
     warnings = []
+    if failed_exports:
+        warnings.append(_failed_exports_note(failed_exports))
     if not use_lfs:
         warnings.append("Git LFS is not installed, so design files are stored as regular binary files. "
                         "Install git-lfs (brew install git-lfs) to keep the repository small.")
@@ -330,12 +337,15 @@ def commit(message, push_after=False):
     if ctx.doc.isModified:
         fdesign.save(ctx.doc, message)
     config = store.load_repo_config(ctx.repo.root)
-    files = [ctx.repo.relpath(f) for f in fdesign.export_wrapper(ctx.design, wrapper, ctx.file, config["exports"])]
+    written, failed_exports = fdesign.export_wrapper(ctx.design, wrapper, ctx.file, config["exports"])
+    files = [ctx.repo.relpath(f) for f in written]
     if os.path.exists(ctx.repo.abspath(store.REPO_CONFIG_NAME)):
         files.append(store.REPO_CONFIG_NAME)  # carries settings changes made in Git → Settings
     sha = ctx.repo.commit_files(files, message)
     _record_sync(ctx.key, ctx.repo, ctx.path)
     summary = f"Committed {sha} on {ctx.repo.branch()}" if sha else "Nothing changed since the last commit"
+    if failed_exports:
+        _info(_failed_exports_note(failed_exports), "Committed with warnings")
     if push_after:
         run_in_background(ctx.repo.push, lambda _: notify(f"{summary} and pushed"), "Pushing…")
     else:

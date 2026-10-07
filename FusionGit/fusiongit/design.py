@@ -10,6 +10,7 @@ import uuid
 import adsk.core
 import adsk.fusion
 
+from . import log
 from .log import UserError
 
 ATTR_GROUP = "fusiongit"
@@ -286,34 +287,96 @@ def wrap_existing(design, component_name):
     The imported component takes its name from the file, hence the temp file name."""
     ensure_parametric(design)
     allow_components(design)
-    em = design.exportManager
-    temp_file = os.path.join(tempfile.mkdtemp(prefix="fusiongit-"), component_name + ".f3d")
-    if not em.execute(em.createFusionArchiveExportOptions(temp_file)):
-        raise UserError("Exporting the design failed. The design was not changed.")
+    temp_file = _export_to_temp(design, lambda path: design.exportManager.createFusionArchiveExportOptions(path),
+                                component_name + ".f3d")
+    if not temp_file:
+        raise UserError(_export_failed_message(design) + " The design was not changed.")
     return replace_contents(design, temp_file)
 
 
 # --- export ------------------------------------------------------------------
 
+def _export_to_temp(design, make_options, file_name):
+    """Run an export into a temporary folder. Returns the written file, or None.
+
+    Fusion's ExportManager.execute can report failure for designs whose timeline has
+    warnings while still writing a complete file, so the file itself is what counts."""
+    temp_file = os.path.join(tempfile.mkdtemp(prefix="fusiongit-"), file_name)
+    try:
+        reported = design.exportManager.execute(make_options(temp_file))
+    except RuntimeError as e:
+        log.info("export of %s raised %s", file_name, e)
+        reported = False
+    written = os.path.isfile(temp_file) and os.path.getsize(temp_file) > 0
+    if not reported or not written:
+        log.info("export of %s: execute returned %s, file written %s", file_name, reported, written)
+    return temp_file if written else None
+
+
+def timeline_problems(design):
+    """Names of timeline features with warnings or errors."""
+    bad = {adsk.fusion.FeatureHealthStates.WarningFeatureHealthState,
+           adsk.fusion.FeatureHealthStates.ErrorFeatureHealthState}
+    names = []
+
+    def visit(item):
+        if item.isGroup:
+            group = adsk.fusion.TimelineGroup.cast(item)
+            for i in range(group.count):
+                visit(group.item(i))
+        elif _try(lambda: item.healthState in bad):
+            names.append(item.name)
+
+    timeline = design.timeline
+    for index in range(timeline.count):
+        visit(timeline.item(index))
+    return names
+
+
+def _export_failed_message(design):
+    problems = _try(lambda: timeline_problems(design)) or []
+    if problems:
+        return ("Fusion could not export the design. These timeline features have warnings or errors: "
+                + ", ".join(problems[:8]) + (" …" if len(problems) > 8 else "")
+                + ". Fix or suppress them and try again.")
+    return "Fusion could not export the design."
+
+
 def export_wrapper(design, occ, file_path, exports):
     """Export the wrapper to `file_path` plus the extra formats enabled in `exports`.
-    Returns all written files."""
+    Returns (written files, names of extra formats that failed). Files in the repository
+    are only replaced by complete exports."""
     em = design.exportManager
+    component = occ.component
     os.makedirs(os.path.dirname(file_path), exist_ok=True)
-    if not em.execute(em.createFusionArchiveExportOptions(file_path, occ.component)):
-        raise UserError("Exporting the design failed.")
-    written = [file_path]
     stem = os.path.splitext(file_path)[0]
+    name = os.path.basename(stem)
+
+    archive = _export_to_temp(design, lambda path: em.createFusionArchiveExportOptions(path, component),
+                              name + ".f3d")
+    if not archive:
+        raise UserError(_export_failed_message(design))
+    shutil.move(archive, file_path)
+    written, failed = [file_path], []
+
+    extras = []
     if exports.get("step"):
-        em.execute(em.createSTEPExportOptions(stem + ".step", occ.component))
-        written.append(stem + ".step")
+        extras.append(("STEP", ".step", lambda path: em.createSTEPExportOptions(path, component)))
     if exports.get("stl"):
-        em.execute(em.createSTLExportOptions(occ.component, stem + ".stl"))
-        written.append(stem + ".stl")
+        extras.append(("STL", ".stl", lambda path: em.createSTLExportOptions(component, path)))
+    for label, extension, make_options in extras:
+        exported = _export_to_temp(design, make_options, name + extension)
+        if exported:
+            shutil.move(exported, stem + extension)
+            written.append(stem + extension)
+        else:
+            failed.append(label)
     if exports.get("thumbnail") and _app.activeViewport:
-        if _app.activeViewport.saveAsImageFile(stem + ".png", 512, 512):
+        if _try(lambda: _app.activeViewport.saveAsImageFile(stem + ".png", 512, 512)):
             written.append(stem + ".png")
-    return [p for p in written if os.path.exists(p)]
+        else:
+            failed.append("PNG")
+    return written, failed
 
 
 def open_preview(file_path, title):
