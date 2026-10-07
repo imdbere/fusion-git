@@ -8,6 +8,8 @@ Fusion accounts, and the source of truth is the git repository, right next to th
 rest of your project: firmware, PCB files, documentation. Design files are stored
 with Git LFS, so the repository stays small.
 
+<p align="center"><img src="docs/tab_screenshot.png" width="396" alt="The Git tab in Fusion, next to Solid, Surface and Mesh"></p>
+
 ## Features
 
 - **Init, Pull, Push and Commit from a Git tab in Fusion**, no terminal needed for
@@ -42,7 +44,8 @@ with Git LFS, so the repository stays small.
    (macOS: `brew install git git-lfs`) and run `git lfs install` once.
 2. Download `FusionGit-<version>.zip` from the
    [latest release](https://github.com/imdbere/fusion-git/releases/latest) and unzip it
-   somewhere permanent.
+   somewhere permanent. The [releases page](https://github.com/imdbere/fusion-git/releases)
+   also lists what changed in each version.
 3. In Fusion, open **Utilities → Add-Ins → Scripts and Add-Ins**, click **+** and choose
    **Script or add-in from device**. Select the unzipped `FusionGit` folder.
 4. Turn FusionGit on and tick **Run on Startup**.
@@ -136,4 +139,6 @@ npx pyright
 Add the `FusionGit` folder in Fusion's Scripts and Add-Ins dialog (**+ → Script or
 add-in from device**); Stop and Run reloads the code. `python3 tools/build_icons.py`
 rebuilds the toolbar icons from `tools/icons`, `python3 tools/package.py` builds the
-release zip. Pushing a `v<version>` tag that matches the manifest publishes a release.
+release zip. To release, publish a GitHub release with a tag like `v1.2.0` and the
+changes in its description; CI builds `FusionGit-1.2.0.zip` with that version and
+attaches it.
