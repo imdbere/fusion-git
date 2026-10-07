@@ -1,98 +1,139 @@
+<p align="center"><img src="docs/logo.svg" width="112" alt=""></p>
+
 # fusion-git
 
-A Fusion add-in that keeps designs in a git repository, next to the firmware,
-PCB and docs of a project. Commit on save, pull, push and reimport from a **Git**
-tab. Works with the free personal-use tier: every collaborator has their own
-Fusion copy of a design, and git is the source of truth.
+fusion-git is an add-in for Autodesk Fusion that lets you collaborate on designs
+through git, also on Fusion's free personal tier. Collaborators can use different
+Fusion accounts, and the source of truth is the git repository, right next to the
+rest of your project: firmware, PCB files, documentation. Design files are stored
+with Git LFS, so the repository stays small.
 
-Collaboration is asynchronous — git cannot merge `.f3d` files, so when two people
-change the same design, one version is chosen (with a side-by-side compare).
+## Features
 
-See [SPEC.md](SPEC.md) for the design, the limitations and the experiments behind it.
+- **Init, Pull, Push and Commit from a Git tab in Fusion**, no terminal needed for
+  everyday work.
+- **Commit on save**: after saving, Fusion asks for a commit message. Optionally push
+  right away.
+- **Conflict resolution**: if you and a collaborator changed the same design, open the
+  remote version in a second tab to compare, then keep yours or take theirs.
+- **Automatic exports**: every commit can also write a STEP file and a PNG preview (and
+  STL), configurable per repository, so people without Fusion can use the parts.
+- **Open designs from any clone** with *File → Open from git repository*.
+
+## Limitations
+
+- **The whole design lives inside one top-level component.** Init sets this up
+  automatically. It's a consequence of what Fusion's API allows; the
+  [technical details](docs/how-it-works.md) explain why. If you know a way around it,
+  pull requests are very welcome.
+- **Part and Hybrid designs only.** Init turns Part designs into Hybrid designs.
+  Assembly designs aren't supported.
+- **Collaboration is turn-based.** Git can't merge Fusion designs and Fusion has no way
+  to compare or merge two versions, so a conflict means picking one version. Agree on
+  who works on which design.
+- **Designs that insert other designs (external references) aren't synced yet.** Init
+  can embed them instead. Syncing them as separate files is planned.
+- **Pulling replaces the geometry**, so drawings, manufacturing setups and joints in
+  other designs that reference it may need fixing afterwards.
 
 ## Install
 
 1. Install [git](https://git-scm.com/downloads) and [Git LFS](https://git-lfs.com)
-   (macOS: `brew install git git-lfs`), then run `git lfs install` once.
+   (macOS: `brew install git git-lfs`) and run `git lfs install` once.
 2. Download `FusionGit-<version>.zip` from the
-   [latest release](https://github.com/imdbere/fusion-git/releases/latest) and unzip it.
-3. Move the `FusionGit` folder into Fusion's add-ins folder:
-   - macOS: `~/Library/Application Support/Autodesk/Autodesk Fusion 360/API/AddIns`
-   - Windows: `%APPDATA%\Autodesk\Autodesk Fusion 360\API\AddIns`
-4. In Fusion: **Utilities → Add-Ins → Scripts and Add-Ins → Add-Ins → FusionGit → Run**
-   (tick *Run on Startup* to keep it loaded).
+   [latest release](https://github.com/imdbere/fusion-git/releases/latest) and unzip it
+   somewhere permanent.
+3. In Fusion, open **Utilities → Add-Ins → Scripts and Add-Ins**, click **+** and choose
+   **Script or add-in from device**. Select the unzipped `FusionGit` folder.
+4. Turn FusionGit on and tick **Run on Startup**.
 
-Git uses your normal credentials (credential manager or SSH agent). If a push asks
-for a password, set up credentials once in a terminal first.
+A new **Git** tab appears in the Design workspace; that's where you'll find all of
+fusion-git's features. Opening a design from a repository is in the **File** menu.
 
-## Use
+Git uses your normal credentials (credential manager or SSH agent). If git has never
+pushed to your host from this computer, push once from a terminal to set that up.
 
-The **Git** tab shows only what applies to the open design:
+## How to use
 
-| Section | Button | What it does |
-|---|---|---|
-| Sync | **Init** | Connect the design to a new repository (name + location) or save it into an existing one. Moves the design into one component, exports it, commits. Part designs become Hybrid designs. |
-| Sync | **Commit** | Export the design and commit only its files to the current branch. Also offered after every save. *Push after committing* (remembered) makes it Commit and Push. |
-| Sync | **Pull** / **Push** | Fetch + merge and load the design / push the branch. Disabled while the repository has no remote. |
-| Sync ▾ | **Reimport** | Load the design file from the working tree (after a checkout, or to discard local changes). |
-| Sync | **Locate repository** | Shown instead of the above when the design's repository isn't on this computer. |
-| Repository | **Status** | Branch, ahead/behind, uncommitted changes. |
-| Repository ▾ | **Settings** | Exported files, designs folder, remote URL (per repository); commit prompt, default location (per computer). |
+### How it fits together
 
-**File → Open from git repository…** opens a `.f3d` from a cloned repository as a new (Hybrid) Fusion design, linked to that file.
+Each synced design has two halves: the **design** in your Fusion project, where you
+work, and its **`.f3d` file** in the repository, which is what gets committed and
+shared.
 
-Confirmations appear briefly in Fusion's status area (the API has no toast notifications).
+- **Commit** exports the design to the file and commits it.
+- **Pull** fetches and merges, then loads the file into your design. Your design stays
+  the same Fusion document; the pull shows up as a new version in its history.
+- **Reimport** only does the second half: it loads the file from your working copy into
+  the design. Use it after you changed the repository outside Fusion, for example after
+  switching branches, or to throw away changes you haven't committed.
 
-Pull, Reimport and Init import the new version first and only then remove the old
-contents, so a failed import leaves the design unchanged.
+### Put an existing design on git
 
-### Repo settings — `.fusiongit.json`
+1. Open the design (save it first if it's new) and click **Git → Init**.
+2. Choose **New repository** (name and location) or **Existing repository** (pick where
+   the file should go in a repo you already have).
+3. fusion-git moves the design into one component, writes the file, sets up Git LFS and
+   makes the first commit. Add a remote in **Repository → Settings** and click **Push**.
 
-Created by Init at the repo root and shared through git:
+### Open a design from git
 
-```json
-{
-  "designsDir": "mechanical",
-  "exports": { "step": true, "stl": false, "thumbnail": true },
-  "lfs": ["*.f3d", "*.step", "*.stl"]
-}
-```
+1. Clone the repository as usual (`git clone …`).
+2. In Fusion, choose **File → Open from git repository…** and select the `.f3d` file.
+3. fusion-git creates a new design in the active project and links it to the file.
+   From then on, Pull and Commit work in both directions.
 
-Per-machine state lives in `~/.fusiongit/` (`links.json`, `settings.json`, `fusiongit.log`).
+### Day to day
+
+Work and save as usual. When fusion-git asks for a commit message, describe the change
+(or cancel and commit later with **Commit**). **Pull** before you start working on a
+design someone else changed, **Push** when you're done.
+
+**Repository → Settings** controls the exported files, the folder for new design files
+and the remote. These are stored in `.fusiongit.json` and shared with everyone using
+the repository.
+
+## FAQ
+
+**What about branches, rebasing, tags and other git features?**
+Use your usual git tool or the command line; fusion-git doesn't get in the way. After
+anything that changes the design file in your working copy (checkout, merge, reset),
+click **Reimport** to load it into Fusion.
+
+**Which git hosts work?**
+Any: GitHub, GitLab, Gitea, a server of your own. The host needs to support Git LFS
+for the design files.
+
+**Do collaborators need a paid Fusion subscription?**
+No. Every collaborator works in their own Fusion account; nothing is shared through
+Fusion's cloud.
+
+**I opened a synced design on another computer and it asks me to locate the
+repository.**
+The design knows which file it belongs to, but not where the repository is cloned on
+that computer. Clone it and click **Locate repository**.
+
+**Can I edit the `.f3d` file outside Fusion?**
+No. Treat it as Fusion's output. Change the design in Fusion and commit.
+
+**Where are the logs?**
+In `~/.fusiongit/fusiongit.log`, together with the per-computer settings.
 
 ## License
 
-MIT — see [LICENSE](LICENSE). Thanks to
+MIT, see [LICENSE](LICENSE). Thanks to
 [FusionToGitHub](https://github.com/zcohen-nerd/FusionToGitHub) for the idea.
 
 ## Develop
 
-Link the working copy into Fusion instead of installing a release
-(Stop and Run in the Add-Ins dialog reloads the code):
-
 ```bash
-ln -s "$PWD/FusionGit" "$HOME/Library/Application Support/Autodesk/Autodesk Fusion 360/API/AddIns/FusionGit"
+git clone https://github.com/imdbere/fusion-git.git && cd fusion-git
+git submodule update --init --depth 1   # Autodesk's API type stubs, for type checking
+python3 -m unittest discover -s tests
+npx pyright
 ```
 
-```bash
-git submodule update --init --depth 1   # Autodesk's adsk type stubs (~70 MB, only needed for type checking)
-npx pyright                             # type check against those stubs
-python3 -m unittest discover -s tests   # tests (git logic against real repositories)
-python3 tools/build_icons.py            # rebuild toolbar icons from tools/icons/*.svg
-python3 tools/package.py                # build dist/FusionGit-<version>.zip
-```
-
-Releases: bump `version` in `FusionGit/FusionGit.manifest`, update `CHANGELOG.md`,
-then push a tag `v<version>`; CI tests on macOS and Windows and attaches the zip to
-the GitHub release.
-
-The git logic (`repo.py`, `gitcli.py`, `store.py`) has no Fusion dependency and is
-tested against real repositories. Fusion-facing code (`design.py`, `actions.py`,
-`ui.py`) is import-tested against a mocked API and verified manually:
-
-1. Init a saved design with a few components → one component named after the file, commit in the repo.
-2. Edit, save → commit prompt → commit contains only the design files.
-3. Second account/machine: Open from repo → same structure and parameters.
-4. Change and push on one side, Pull on the other → design updated in place (same cloud document, new version).
-5. Change on both sides → Pull shows the conflict dialog; Compare, Keep mine, Take theirs.
-6. Open a linked design on a computer without the repo → status message + Locate repository.
+Add the `FusionGit` folder in Fusion's Scripts and Add-Ins dialog (**+ → Script or
+add-in from device**); Stop and Run reloads the code. `python3 tools/build_icons.py`
+rebuilds the toolbar icons from `tools/icons`, `python3 tools/package.py` builds the
+release zip. Pushing a `v<version>` tag that matches the manifest publishes a release.
