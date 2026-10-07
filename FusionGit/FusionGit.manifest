@@ -6,7 +6,7 @@
 	"description": {
 		"": "Keep Fusion designs in a git repository: init, commit on save, pull, push, reimport."
 	},
-	"version": "0.1.0",
+	"version": "0.0.0-dev",
 	"runOnStartup": false,
 	"supportedOS": "windows|mac",
 	"editEnabled": true

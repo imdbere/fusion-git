@@ -3,8 +3,9 @@ name: CI
 on:
   push:
     branches: [main]
-    tags: ["v*"]
   pull_request:
+  release:
+    types: [published]
 
 permissions:
   contents: write
@@ -35,8 +36,10 @@ jobs:
           node-version: "22"
       - run: npx --yes pyright@latest
 
-  release:
-    if: startsWith(github.ref, 'refs/tags/v')
+  # Publishing a release on GitHub (tag vX.Y.Z) builds the add-in with that version
+  # and attaches FusionGit-X.Y.Z.zip to the release.
+  release-asset:
+    if: github.event_name == 'release'
     needs: [test, typecheck]
     runs-on: ubuntu-latest
     steps:
@@ -44,12 +47,9 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Check tag matches manifest version
-        run: |
-          version=$(python -c "import json; print(json.load(open('FusionGit/FusionGit.manifest'))['version'])")
-          test "v$version" = "${GITHUB_REF_NAME}" || { echo "Tag ${GITHUB_REF_NAME} != manifest v$version"; exit 1; }
-      - run: python tools/package.py
-      - uses: softprops/action-gh-release@v2
-        with:
-          files: dist/FusionGit-*.zip
-          generate_release_notes: true
+      - name: Build zip
+        run: python tools/package.py --version "${GITHUB_REF_NAME#v}"
+      - name: Attach to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$GITHUB_REF_NAME" dist/FusionGit-*.zip --clobber
