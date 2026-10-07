@@ -1,0 +1,7 @@
+{
+  "include": ["FusionGit", "tests", "tools"],
+  "stubPath": "vendor/FusionAPIReference/Fusion_API_Python_Reference/defs",
+  "extraPaths": ["FusionGit"],
+  "pythonVersion": "3.14",
+  "typeCheckingMode": "basic"
+}

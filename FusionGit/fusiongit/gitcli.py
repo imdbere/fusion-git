@@ -51,10 +51,11 @@ class Git:
     """Runs git in one working directory."""
 
     def __init__(self, cwd):
-        self.cwd = cwd
-        self.exe = find_git()
-        if not self.exe:
+        exe = find_git()
+        if not exe:
             raise FileNotFoundError("git executable not found; install git and restart Fusion")
+        self.cwd = cwd
+        self.exe: str = exe
 
     def _exec(self, args, timeout, input_bytes=None):
         kwargs = {"creationflags": subprocess.CREATE_NO_WINDOW} if sys.platform == "win32" else {}

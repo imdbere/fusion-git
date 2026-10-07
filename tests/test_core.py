@@ -236,10 +236,12 @@ class StoreTests(GitTestCase):
     def test_links(self):
         store.set_link("id1", repoPath=self.alice.root, pathInRepo=DESIGN, syncedHash="abc")
         store.set_link("id1", dirty=True, lineage="urn:lineage")
-        self.assertEqual(store.get_link("id1")["syncedHash"], "abc")
-        self.assertTrue(store.get_link("id1")["dirty"])
-        key, link = store.find_link(self.alice.root + os.sep, DESIGN)
-        self.assertEqual((key, link["lineage"]), ("id1", "urn:lineage"))
+        link = store.get_link("id1")
+        assert link is not None
+        self.assertEqual((link["syncedHash"], link["dirty"]), ("abc", True))
+        key, found = store.find_link(self.alice.root + os.sep, DESIGN)
+        assert found is not None
+        self.assertEqual((key, found["lineage"]), ("id1", "urn:lineage"))
         store.remove_link("id1")
         self.assertIsNone(store.get_link("id1"))
         self.assertEqual(store.find_link(self.alice.root, DESIGN), (None, None))

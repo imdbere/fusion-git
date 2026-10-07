@@ -51,4 +51,6 @@ def guarded(fn):
 def _show(message, title="Git"):
     import adsk.core
     adsk.core.Application.get().userInterface.messageBox(
-        message, title, adsk.core.MessageBoxButtonTypes.OKButtonType, adsk.core.MessageBoxIconTypes.WarningIconType)
+        message, title,
+        adsk.core.MessageBoxButtonTypes.OKButtonType,  # pyright: ignore[reportArgumentType]
+        adsk.core.MessageBoxIconTypes.WarningIconType)  # pyright: ignore[reportArgumentType]

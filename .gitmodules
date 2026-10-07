@@ -1,0 +1,4 @@
+[submodule "vendor/FusionAPIReference"]
+	path = vendor/FusionAPIReference
+	url = https://github.com/AutodeskFusion360/FusionAPIReference.git
+	shallow = true

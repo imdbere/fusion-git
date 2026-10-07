@@ -28,8 +28,9 @@ IGNORED = ["_XRef_/", ".DS_Store"]
 
 
 def _confirm(message, title="Git"):
-    return _ui.messageBox(message, title, adsk.core.MessageBoxButtonTypes.YesNoButtonType,
-                          adsk.core.MessageBoxIconTypes.WarningIconType) == adsk.core.DialogResults.DialogYes
+    answer = _ui.messageBox(message, title, adsk.core.MessageBoxButtonTypes.YesNoButtonType,  # pyright: ignore[reportArgumentType]
+                            adsk.core.MessageBoxIconTypes.WarningIconType)  # pyright: ignore[reportArgumentType]
+    return answer == adsk.core.DialogResults.DialogYes
 
 
 def _info(message, title="Git"):
@@ -70,7 +71,7 @@ class Context:
 class ActiveState:
     state: str  # none | unlinked | relink | linked
     has_remote: bool = False
-    meta: dict = None
+    meta: dict | None = None
 
 
 def active_state():
@@ -98,7 +99,7 @@ def linked_context():
     doc = design.parentDocument
     key = fdesign.link_key(design)
     link = store.get_link(key or "")
-    if not link or not os.path.isdir(link.get("repoPath", "")):
+    if not key or not link or not os.path.isdir(link.get("repoPath", "")):
         raise UserError("The repository for this design was not found on this computer. "
                         "Use Git → Locate repository.")
     link = _remember_lineage(key, link, doc)
@@ -274,7 +275,7 @@ def open_target(file_path):
                         "restart Fusion and try again.")
 
     key, link = store.find_link(repo.root, path)
-    if key:
+    if key and link:
         cloud_id = link.get("lineage") or (key if key.startswith("urn:") else None)
         if not cloud_id:
             raise UserError(f"{path} is already open as the design '{link.get('designName', path)}', "
@@ -288,7 +289,7 @@ def open_target(file_path):
             _app.documents.open(data_file)
             return None
         store.remove_link(key)  # the linked design was deleted from the Fusion cloud
-    doc = _app.documents.add(adsk.core.DocumentTypes.FusionDesignDocumentType)
+    doc = _app.documents.add(adsk.core.DocumentTypes.FusionDesignDocumentType)  # pyright: ignore[reportArgumentType]
     return doc, repo, path
 
 
@@ -452,7 +453,7 @@ def status():
     if state.state == "unlinked":
         _info("This design is not connected to a git repository.", "Git status")
         return
-    if state.state == "relink":
+    if state.state == "relink" and state.meta:
         _info(f"Connected to {state.meta['pathInRepo']} in {state.meta['remoteUrl'] or 'a local repository'}, "
               "but that repository was not found on this computer. Use Git → Locate repository.", "Git status")
         return
@@ -476,7 +477,7 @@ def status():
 def locate():
     design = fdesign.active_design()
     meta = fdesign.get_metadata(design) if design else None
-    if not meta:
+    if not design or not meta:
         raise UserError("Open a design that is connected to git.")
     dialog = _ui.createFolderDialog()
     dialog.title = f"Locate the repository containing {meta['pathInRepo']}"

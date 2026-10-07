@@ -75,6 +75,8 @@ ln -s "$PWD/FusionGit" "$HOME/Library/Application Support/Autodesk/Autodesk Fusi
 ```
 
 ```bash
+git submodule update --init --depth 1   # Autodesk's adsk type stubs (~70 MB, only needed for type checking)
+npx pyright                             # type check against those stubs
 python3 -m unittest discover -s tests   # tests (git logic against real repositories)
 python3 tools/make_icons.py             # regenerate toolbar icons
 python3 tools/package.py                # build dist/FusionGit-<version>.zip

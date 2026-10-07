@@ -119,8 +119,9 @@ def start():
     for panel_id, name in PANELS:
         panel = tab.toolbarPanels.itemById(panel_id) or tab.toolbarPanels.add(panel_id, name)
         for button in [b for b in BUTTONS if b.panel == panel_id]:
-            control = panel.controls.itemById(button.id) or panel.controls.addCommand(
-                _ui.commandDefinitions.itemById(button.id))
+            control = adsk.core.CommandControl.cast(
+                panel.controls.itemById(button.id)
+                or panel.controls.addCommand(_ui.commandDefinitions.itemById(button.id)))
             control.isPromoted = control.isPromotedByDefault = button.promoted
 
     file_menu = _ui.toolbars.itemById("QAT").controls.itemById("FileSubMenuCommand")
@@ -167,8 +168,9 @@ def refresh():
         control = cmd_def.controlDefinition
         control.isVisible = state.state in button.states
         control.isEnabled = not button.needs_remote or state.has_remote
-    if state.state == "relink":
-        key = fdesign.link_key(fdesign.active_design())
+    design = fdesign.active_design()
+    if state.state == "relink" and state.meta and design:
+        key = fdesign.link_key(design)
         if key not in _relink_noticed:
             _relink_noticed.add(key)
             notify(f"Git repository for {state.meta['pathInRepo']} not found on this computer — "

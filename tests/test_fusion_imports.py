@@ -18,8 +18,9 @@ def _fake_adsk():
     for name in ("CustomEventHandler", "CommandCreatedEventHandler", "CommandEventHandler",
                  "InputChangedEventHandler", "DocumentEventHandler", "ValidateInputsEventHandler"):
         setattr(core, name, type(name, (), {}))
-    adsk.core, adsk.fusion = core, fusion
-    adsk.doEvents = lambda: None
+    setattr(adsk, "core", core)
+    setattr(adsk, "fusion", fusion)
+    setattr(adsk, "doEvents", lambda: None)
     return adsk
 
 

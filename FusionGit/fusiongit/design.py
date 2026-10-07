@@ -106,7 +106,9 @@ def link_key(design):
     """Key of the design's entry in links.json. A design's cloud id changes after its first
     upload, so the add-in stores its own id in the design; older links used the cloud id."""
     meta = get_metadata(design)
-    return (meta and meta["linkId"]) or lineage(design.parentDocument)
+    if meta and meta["linkId"]:
+        return meta["linkId"]
+    return lineage(design.parentDocument)
 
 
 def design_of(doc):
