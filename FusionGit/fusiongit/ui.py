@@ -14,9 +14,9 @@ _ui = _app.userInterface
 
 WORKSPACE_ID = "FusionSolidEnvironment"
 TAB_ID = "FusionGitTab"
-# Fusion caches command icons by folder path until it restarts; change this folder
-# (and OUT in tools/make_icons.py) when the icons change so updates show up.
-ICONS = os.path.join(os.path.dirname(os.path.dirname(__file__)), "resources", "icons")
+# Built by tools/build_icons.py. Fusion caches icons by folder path until it restarts,
+# so the build writes to a new folder name whenever the icon set changes.
+ICONS = os.path.join(os.path.dirname(os.path.dirname(__file__)), "resources", "svg-icons")
 OPEN_ID = "FusionGitOpen"
 CONFLICT_ID = "FusionGitConflict"
 F3D_FILTER = "Fusion archive (*.f3d)"
